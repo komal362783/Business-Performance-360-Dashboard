@@ -1,0 +1,9 @@
+category_id,category_name,department
+1,Electronics,Hardgoods
+2,Furniture,Hardgoods
+3,Apparel,Softlines
+4,Footwear,Softlines
+5,Home & Kitchen,Hardgoods
+6,Sports & Outdoors,Hardgoods
+7,Beauty & Personal Care,Softlines
+8,Groceries,Consumables

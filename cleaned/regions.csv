@@ -1,0 +1,31 @@
+region_id,country,state,region_name
+1,USA,California,USA - California
+2,USA,Texas,USA - Texas
+3,USA,New York,USA - New York
+4,USA,Florida,USA - Florida
+5,USA,Illinois,USA - Illinois
+6,USA,Washington,USA - Washington
+7,USA,Georgia,USA - Georgia
+8,USA,Ohio,USA - Ohio
+9,UK,England,UK - England
+10,UK,Scotland,UK - Scotland
+11,UK,Wales,UK - Wales
+12,UK,Northern Ireland,UK - Northern Ireland
+13,Canada,Ontario,Canada - Ontario
+14,Canada,Quebec,Canada - Quebec
+15,Canada,British Columbia,Canada - British Columbia
+16,Canada,Alberta,Canada - Alberta
+17,Australia,New South Wales,Australia - New South Wales
+18,Australia,Victoria,Australia - Victoria
+19,Australia,Queensland,Australia - Queensland
+20,Australia,Western Australia,Australia - Western Australia
+21,Germany,Bavaria,Germany - Bavaria
+22,Germany,Berlin,Germany - Berlin
+23,Germany,Hesse,Germany - Hesse
+24,Germany,North Rhine-Westphalia,Germany - North Rhine-Westphalia
+25,India,Maharashtra,India - Maharashtra
+26,India,Karnataka,India - Karnataka
+27,India,Delhi,India - Delhi
+28,India,Tamil Nadu,India - Tamil Nadu
+29,India,Gujarat,India - Gujarat
+30,India,Uttar Pradesh,India - Uttar Pradesh
