@@ -1,0 +1,19 @@
+{
+  "total_revenue": 112634970.45,
+  "total_profit": 53103126.71,
+  "profit_margin_pct": 47.15,
+  "total_orders": 101800,
+  "avg_order_value": 1106.43,
+  "total_customers": 8000,
+  "active_customers": 8000,
+  "repeat_customer_rate_pct": 99.99,
+  "return_rate_pct": 6.0,
+  "total_refunded": 5810341.47,
+  "refund_pct_of_revenue": 5.16,
+  "yoy_growth_pct_jan_jul": 74.52,
+  "yoy_growth_pct_full_year_raw": 20.26,
+  "mom_growth_pct_latest": 4.05,
+  "analysis_complete_through": "2025-07",
+  "avg_target_achievement_pct": 105.51,
+  "avg_delivery_days": 4.01
+}

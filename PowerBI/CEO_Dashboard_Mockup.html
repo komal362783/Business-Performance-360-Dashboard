@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Performance 360° Dashboard — GlobalMart Retail Inc.</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --navy:#1F3864; --navy-light:#2E5395; --gold:#C9A961; --green:#2E7D32;
+  --red:#C62828; --grey:#595959; --bg:#F5F6F8; --panel:#FFFFFF; --border:#E4E7EC;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:'Segoe UI',-apple-system,'Inter',sans-serif; background:var(--bg); color:#1a1a1a;}
+.app{display:flex; min-height:100vh;}
+
+/* NAV RAIL */
+.navrail{width:210px; background:var(--navy); color:#fff; display:flex; flex-direction:column; flex-shrink:0; position:sticky; top:0; height:100vh;}
+.navrail .brand{padding:22px 18px 16px; border-bottom:1px solid rgba(255,255,255,0.12);}
+.navrail .brand .title{font-weight:700; font-size:15px; letter-spacing:0.3px;}
+.navrail .brand .sub{font-size:11px; color:#C9D3E6; margin-top:3px;}
+.navrail nav{flex:1; padding:10px 0; overflow-y:auto;}
+.navbtn{display:flex; align-items:center; gap:10px; width:100%; background:none; border:none; color:#D7DEEC;
+  padding:11px 18px; font-size:13px; text-align:left; cursor:pointer; border-left:3px solid transparent;}
+.navbtn:hover{background:rgba(255,255,255,0.06); color:#fff;}
+.navbtn.active{background:rgba(255,255,255,0.10); color:#fff; border-left:3px solid var(--gold); font-weight:600;}
+.navbtn .ic{width:18px; text-align:center; font-size:14px;}
+.navrail .foot{padding:14px 18px; font-size:10.5px; color:#9FB0CC; border-top:1px solid rgba(255,255,255,0.12);}
+
+/* MAIN */
+.main{flex:1; min-width:0;}
+.page{display:none; padding:22px 26px 40px;}
+.page.active{display:block;}
+.pagehead{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:16px; flex-wrap:wrap; gap:10px;}
+.pagehead h1{font-size:21px; color:var(--navy); font-weight:700;}
+.pagehead .desc{font-size:12.5px; color:var(--grey); margin-top:3px;}
+.slicers{display:flex; gap:8px; flex-wrap:wrap;}
+.slicer{background:#fff; border:1px solid var(--border); border-radius:6px; padding:7px 12px; font-size:12px; color:var(--navy); font-weight:600; cursor:pointer;}
+.slicer.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+
+/* KPI CARDS */
+.kpirow{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:18px;}
+.kpi{background:var(--panel); border-radius:8px; padding:14px 16px; border:1px solid var(--border); border-top:3px solid var(--navy);}
+.kpi.gold{border-top-color:var(--gold);} .kpi.green{border-top-color:var(--green);} .kpi.red{border-top-color:var(--red);}
+.kpi .label{font-size:10.5px; color:var(--grey); text-transform:uppercase; letter-spacing:0.4px; font-weight:600;}
+.kpi .value{font-size:22px; font-weight:700; color:var(--navy); margin-top:4px;}
+.kpi .delta{font-size:11px; margin-top:3px; font-weight:600;}
+.kpi .delta.up{color:var(--green);} .kpi .delta.down{color:var(--red);}
+
+/* GRID / PANELS */
+.grid{display:grid; gap:14px;}
+.g2{grid-template-columns:2fr 1fr;} .g3{grid-template-columns:1fr 1fr 1fr;}
+.g12{grid-template-columns:1fr 1fr;}
+.panel{background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px;}
+.panel h3{font-size:13px; color:var(--navy); margin-bottom:10px; font-weight:700;}
+.panel .note{font-size:10.5px; color:var(--grey); margin-top:8px; font-style:italic;}
+.chartwrap{position:relative; height:260px;}
+.chartwrap.tall{height:340px;}
+.chartwrap.short{height:190px;}
+
+table{width:100%; border-collapse:collapse; font-size:12px;}
+th{text-align:left; color:var(--grey); font-weight:600; padding:6px 8px; border-bottom:2px solid var(--border); font-size:10.5px; text-transform:uppercase;}
+td{padding:7px 8px; border-bottom:1px solid var(--border);}
+tr:hover td{background:#FAFBFC;}
+.bar-cell{background:linear-gradient(90deg, var(--navy-light) var(--pct,0%), transparent var(--pct,0%)); }
+.tag{display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700;}
+.tag.on{background:#E3F1E3; color:var(--green);} .tag.off{background:#FBE3E3; color:var(--red);}
+
+.badge{display:inline-flex; align-items:center; gap:5px; background:#EEF2F9; color:var(--navy); font-size:10.5px; font-weight:600; padding:4px 10px; border-radius:12px;}
+.callout{background:#FFF8E8; border:1px solid #F0E0B0; border-radius:6px; padding:10px 12px; font-size:11.5px; color:#6B5A20; margin-top:10px;}
+.bookmarkbar{display:flex; gap:8px; margin-bottom:14px;}
+.bookmark{background:#fff; border:1px solid var(--gold); color:var(--navy); font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:16px; cursor:pointer;}
+.bookmark:hover{background:var(--gold); color:#fff;}
+
+@media (max-width: 900px){
+  .navrail{width:64px;} .navrail .brand .sub, .navbtn span.label{display:none;}
+  .navrail .brand .title{font-size:10px;} .navbtn{justify-content:center; padding:12px 6px;}
+  .g2,.g3,.g12{grid-template-columns:1fr;}
+  .kpirow{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="navrail">
+    <div class="brand">
+      <div class="title">GLOBALMART</div>
+      <div class="sub">Business Performance 360°</div>
+    </div>
+    <nav id="navmenu"></nav>
+    <div class="foot">HTML mockup · Phase 6<br>Live version built in Power BI</div>
+  </div>
+
+  <div class="main" id="mainpages"></div>
+
+</div>
+
+<script id="dashdata" type="application/json">
+{"kpis": {"total_revenue": 112634970.45, "total_profit": 53103126.71, "profit_margin_pct": 47.15, "total_orders": 101800, "avg_order_value": 1106.43, "total_customers": 8000, "active_customers": 8000, "repeat_customer_rate_pct": 99.99, "return_rate_pct": 6.0, "total_refunded": 5810341.47, "refund_pct_of_revenue": 5.16, "yoy_growth_pct_jan_jul": 74.52, "yoy_growth_pct_full_year_raw": 20.26, "mom_growth_pct_latest": 4.05, "analysis_complete_through": "2025-07", "avg_target_achievement_pct": 105.51, "avg_delivery_days": 4.01}, "monthly_revenue": {"labels": ["2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06", "2023-07", "2023-08", "2023-09", "2023-10", "2023-11", "2023-12", "2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07"], "values": [124522.07, 273345.89, 548017.38, 639677.91, 999897.83, 1056957.66, 1315483.55, 1612787.71, 1754939.45, 1832738.16, 2166451.59, 2445042.26, 2564794.37, 2548219.58, 3003806.36, 3446988.52, 3361192.43, 3530624.07, 3823211.07, 3886535.8, 4373978.85, 4367669.03, 4540802.91, 4984019.96, 5200024.88, 4761258.93, 5499918.14, 5666025.93, 5659471.73, 5926717.01, 6166803.36]}, "category": {"labels": ["Apparel", "Sports & Outdoors", "Groceries", "Furniture", "Home & Kitchen", "Beauty & Personal Care", "Footwear", "Electronics"], "revenue": [16364724.16, 16183500.51, 14355994.83, 14338626.18, 13474898.28, 13266429.95, 12461148.7, 12189647.84], "profit": [7919389.77, 7642918.22, 6745875.0, 7230746.18, 6194018.56, 5956282.17, 5565592.16, 5848304.65]}, "channel": {"labels": ["Online", "In-Store", "Wholesale", "Marketplace"], "values": [50962233.28, 33819918.14, 16883502.44, 10969316.59]}, "country": {"labels": ["USA", "India", "Germany", "Canada", "UK", "Australia"], "values": [31112822.41, 22235490.37, 15412579.42, 14988700.98, 14851126.04, 14034251.23]}, "top_products": {"labels": ["TV Stand Plus", "Vacuum Cleaner", "Bluetooth Speaker Pro", "Men's Jacket Pro", "Granola Bars 2.0", "Laptop Pro 14 2.0", "Yoga Mat Plus", "Dumbbell Set Lite", "Winter Coat Plus", "Blender Pro Lite"], "values": [818368.91, 762633.07, 614068.38, 607118.38, 604066.27, 601001.84, 580767.76, 577838.91, 573782.19, 543922.33]}, "bottom_products": {"labels": ["Camping Tent Plus", "Blender Pro Max", "Cotton T-Shirt Lite", "Laptop Pro 14 Lite", "Microwave Oven Max", "Smartwatch Series Max", "Protein Powder Plus", "Office Chair Pro", "Pasta Pack Pro", "Hiking Backpack Plus"], "values": [7349.77, 8543.84, 8759.02, 10474.27, 12203.34, 13171.81, 15811.71, 15935.66, 16182.81, 16655.85]}, "segment": {"labels": ["Consumer", "Corporate", "Small Business"], "values": [62575151.89, 28174159.95, 21885658.61]}, "target_top": {"labels": ["Germany - Hesse", "UK - England", "Canada - Ontario", "USA - New York", "USA - Florida", "USA - California", "Canada - British Columbia", "Germany - Berlin"], "values": [122.29, 116.47, 112.38, 112.28, 110.0, 108.0, 107.94, 107.65]}, "target_bottom": {"labels": ["India - Karnataka", "UK - Northern Ireland", "India - Uttar Pradesh", "Australia - Victoria", "India - Gujarat", "Canada - Quebec", "UK - Wales", "Germany - Bavaria"], "values": [101.71, 101.53, 101.53, 101.52, 101.08, 101.0, 100.1, 99.36]}, "return_reason": {"labels": ["Not as Described", "Wrong Item Shipped", "Defective Product", "Changed Mind", "Other", "Damaged in Transit", "Not Specified"], "values": [970, 963, 937, 935, 926, 899, 490]}, "return_by_category": {"labels": ["Sports & Outdoors", "Home & Kitchen", "Groceries", "Beauty & Personal Care", "Apparel", "Electronics", "Furniture", "Footwear"], "values": [6.34, 6.09, 6.03, 5.99, 5.95, 5.95, 5.83, 5.82]}, "top_reps": {"labels": ["Patricia Jones", "Raj Iyer", "Robert Cole", "Patricia Brown", "Karen Anderson", "Susan Johnson", "Emma Taylor", "Priya Sharma", "Susan Martin", "Mary Martinez"], "values": [4523706.21, 4193572.85, 4097975.94, 4092315.08, 4050117.64, 3923577.48, 3666077.61, 3652403.66, 3559992.02, 2605244.45]}, "margin_dist": {"labels": ["-2-4%", "4-11%", "11-17%", "17-24%", "24-31%", "31-37%", "37-44%", "44-51%", "51-57%", "57-64%"], "values": [328, 1026, 2685, 6214, 10467, 11815, 12630, 16780, 21137, 18718]}, "top_customers": {"labels": ["Raj Kapoor", "John Clarke", "Sophie Jones", "Jessica Brown", "Barbara Kapoor", "John Iyer", "Daniel Iyer", "David Miller", "Patricia Williams", "Amit Murphy", "Robert Martinez", "Charles Clarke", "Nancy Davis", "Raj Brown", "Patricia Patel"], "values": [317798.99, 296283.2, 294740.83, 275198.82, 266693.63, 257930.85, 253362.17, 252393.53, 248690.79, 245415.14, 244720.05, 242831.49, 242699.79, 239830.09, 239245.51]}}
+</script>
+<script>
+// ============================================================================
+// Business Performance 360 Dashboard - Mockup Logic
+// ============================================================================
+const DATA = JSON.parse(document.getElementById('dashdata').textContent);
+const K = DATA.kpis;
+
+const COLORS = {navy:'#1F3864', navyLight:'#2E5395', gold:'#C9A961', green:'#2E7D32', red:'#C62828', grey:'#8A93A6'};
+const PALETTE = [COLORS.navy, COLORS.gold, COLORS.green, COLORS.red, COLORS.navyLight, '#7B9ACC', '#E0B96B', '#5C7A5D'];
+
+Chart.defaults.font.family = "'Segoe UI', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#4A5568';
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+
+function fmtMoney(v, compact=true){
+  if (compact){
+    if (Math.abs(v) >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+    if (Math.abs(v) >= 1e3) return '$' + (v/1e3).toFixed(0) + 'K';
+  }
+  return '$' + v.toLocaleString(undefined, {maximumFractionDigits:0});
+}
+function fmtNum(v){ return v.toLocaleString(); }
+function fmtPct(v){ return v.toFixed(1) + '%'; }
+
+// ============================================================================
+// PAGE DEFINITIONS
+// ============================================================================
+const PAGES = [
+  {id:'exec', icon:'&#9776;', label:'Executive Overview'},
+  {id:'sales', icon:'&#128179;', label:'Sales Analysis'},
+  {id:'customer', icon:'&#128100;', label:'Customer Analysis'},
+  {id:'product', icon:'&#128230;', label:'Product Analysis'},
+  {id:'regional', icon:'&#127760;', label:'Regional Analysis'},
+  {id:'profit', icon:'&#128200;', label:'Profit Analysis'},
+  {id:'returns', icon:'&#8634;', label:'Returns Dashboard'},
+  {id:'forecast', icon:'&#128302;', label:'Forecast Dashboard'},
+];
+
+// Build nav rail
+const navmenu = document.getElementById('navmenu');
+PAGES.forEach((p,i) => {
+  const btn = document.createElement('button');
+  btn.className = 'navbtn' + (i===0 ? ' active' : '');
+  btn.id = 'nav-' + p.id;
+  btn.innerHTML = `<span class="ic">${p.icon}</span><span class="label">${p.label}</span>`;
+  btn.onclick = () => showPage(p.id);
+  navmenu.appendChild(btn);
+});
+
+function showPage(id){
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.navbtn').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.getElementById('nav-' + id).classList.add('active');
+}
+
+// ============================================================================
+// KPI CARD HELPER
+// ============================================================================
+function kpiCard(label, value, cls='', delta=null){
+  const deltaHtml = delta ? `<div class="delta ${delta.dir}">${delta.dir==='up'?'&#9650;':'&#9660;'} ${delta.text}</div>` : '';
+  return `<div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div>${deltaHtml}</div>`;
+}
+
+// ============================================================================
+// BUILD PAGE HTML SHELLS
+// ============================================================================
+const mainEl = document.getElementById('mainpages');
+
+mainEl.innerHTML = `
+
+<!-- PAGE 1: EXECUTIVE OVERVIEW -->
+<div class="page active" id="page-exec">
+  <div class="pagehead">
+    <div><h1>Executive Overview</h1><div class="desc">Company-wide performance at a glance &mdash; GlobalMart Retail Inc.</div></div>
+    <div class="slicers">
+      <div class="slicer active">All Years</div><div class="slicer">2025</div><div class="slicer">2024</div><div class="slicer">2023</div>
+    </div>
+  </div>
+  <div class="kpirow">
+    ${kpiCard('Total Revenue', fmtMoney(K.total_revenue), '')}
+    ${kpiCard('Total Profit', fmtMoney(K.total_profit), 'gold')}
+    ${kpiCard('Profit Margin', fmtPct(K.profit_margin_pct), 'green')}
+    ${kpiCard('Total Orders', fmtNum(K.total_orders), '')}
+    ${kpiCard('Avg Order Value', fmtMoney(K.avg_order_value,false), 'gold')}
+    ${kpiCard('Target Achievement', fmtPct(K.avg_target_achievement_pct), 'green', {dir:'up', text:'On track'})}
+  </div>
+  <div class="grid g2" style="margin-bottom:14px;">
+    <div class="panel"><h3>Monthly Revenue Trend</h3><div class="chartwrap tall"><canvas id="c-exec-trend"></canvas></div>
+      <div class="note">Chart shows the complete reporting window (through ${K.analysis_complete_through}). Aug&ndash;Dec 2025 excluded &mdash; see Data Window Note in project documentation.</div></div>
+    <div class="panel"><h3>Revenue by Category</h3><div class="chartwrap tall"><canvas id="c-exec-cat"></canvas></div></div>
+  </div>
+  <div class="grid g2">
+    <div class="panel"><h3>Top 5 Regions by Revenue</h3><div class="chartwrap short"><canvas id="c-exec-region"></canvas></div></div>
+    <div class="panel"><h3>Target Achievement Gauge</h3><div class="chartwrap short"><canvas id="c-exec-gauge"></canvas></div>
+      <div class="note">Company average: ${fmtPct(K.avg_target_achievement_pct)} of monthly regional targets.</div></div>
+  </div>
+</div>
+
+<!-- PAGE 2: SALES ANALYSIS -->
+<div class="page" id="page-sales">
+  <div class="pagehead">
+    <div><h1>Sales Analysis</h1><div class="desc">Channel mix, order volume, and sales rep performance</div></div>
+    <div class="slicers"><div class="slicer active">All Channels</div><div class="slicer">Online</div><div class="slicer">In-Store</div><div class="slicer">Wholesale</div></div>
+  </div>
+  <div class="bookmarkbar"><div class="bookmark">&#128278; Top 10 Reps Only</div><div class="bookmark">&#128278; Default View</div></div>
+  <div class="kpirow">
+    ${kpiCard('Total Orders', fmtNum(K.total_orders))}
+    ${kpiCard('Avg Order Value', fmtMoney(K.avg_order_value,false), 'gold')}
+    ${kpiCard('MoM Growth', fmtPct(K.mom_growth_pct_latest), 'green', {dir:'up', text:'vs prior month'})}
+    ${kpiCard('Avg Delivery Days', K.avg_delivery_days.toFixed(1) + ' days')}
+  </div>
+  <div class="grid g2" style="margin-bottom:14px;">
+    <div class="panel"><h3>Revenue by Sales Channel</h3><div class="chartwrap tall"><canvas id="c-sales-channel"></canvas></div></div>
+    <div class="panel"><h3>Revenue by Country</h3><div class="chartwrap tall"><canvas id="c-sales-country"></canvas></div></div>
+  </div>
+  <div class="panel"><h3>Sales Rep Leaderboard (Top 10)</h3><table id="t-sales-reps"></table></div>
+</div>
+
+<!-- PAGE 3: CUSTOMER ANALYSIS -->
+<div class="page" id="page-customer">
+  <div class="pagehead">
+    <div><h1>Customer Analysis</h1><div class="desc">Segments, lifetime value, and retention</div></div>
+    <div class="slicers"><div class="slicer active">All Segments</div><div class="slicer">Consumer</div><div class="slicer">Corporate</div><div class="slicer">Small Business</div></div>
+  </div>
+  <div class="kpirow">
+    ${kpiCard('Total Customers', fmtNum(K.total_customers))}
+    ${kpiCard('Active Customers', fmtNum(K.active_customers), 'gold')}
+    ${kpiCard('Repeat Customer Rate', fmtPct(K.repeat_customer_rate_pct), 'green')}
+    ${kpiCard('Avg Order Value', fmtMoney(K.avg_order_value,false))}
+  </div>
+  <div class="callout">Note: this dataset's repeat-purchase rate (${fmtPct(K.repeat_customer_rate_pct)}) is inflated by its order-to-customer ratio (~12.7 orders/customer on average) &mdash; treat as directional, not a pure retention signal. See Python phase insights for detail.</div>
+  <div class="grid g2" style="margin:14px 0;">
+    <div class="panel"><h3>Revenue by Customer Segment</h3><div class="chartwrap tall"><canvas id="c-cust-segment"></canvas></div></div>
+    <div class="panel"><h3>Top 15 Customers by Lifetime Value</h3><div class="chartwrap tall"><canvas id="c-cust-top"></canvas></div></div>
+  </div>
+</div>
+
+<!-- PAGE 4: PRODUCT ANALYSIS -->
+<div class="page" id="page-product">
+  <div class="pagehead">
+    <div><h1>Product Analysis</h1><div class="desc">What's selling, what isn't, and what's profitable</div></div>
+    <div class="slicers"><div class="slicer active">All Categories</div><div class="slicer">Apparel</div><div class="slicer">Electronics</div><div class="slicer">Groceries</div></div>
+  </div>
+  <div class="grid g2" style="margin-bottom:14px;">
+    <div class="panel"><h3>Top 10 Products by Revenue</h3><div class="chartwrap tall"><canvas id="c-prod-top"></canvas></div></div>
+    <div class="panel"><h3>Bottom 10 Products by Revenue</h3><div class="chartwrap tall"><canvas id="c-prod-bottom"></canvas></div></div>
+  </div>
+  <div class="panel"><h3>Revenue &amp; Profit by Category</h3><div class="chartwrap"><canvas id="c-prod-cat"></canvas></div></div>
+</div>
+
+<!-- PAGE 5: REGIONAL ANALYSIS -->
+<div class="page" id="page-regional">
+  <div class="pagehead">
+    <div><h1>Regional Analysis</h1><div class="desc">Geographic performance and target tracking</div></div>
+    <div class="slicers"><div class="slicer active">All Countries</div><div class="slicer">USA</div><div class="slicer">India</div><div class="slicer">Germany</div></div>
+  </div>
+  <div class="bookmarkbar"><div class="bookmark">&#128278; Underperforming Regions</div><div class="bookmark">&#128278; Default View</div></div>
+  <div class="kpirow">
+    ${kpiCard('Avg Target Achievement', fmtPct(K.avg_target_achievement_pct), 'green')}
+    ${kpiCard('Total Revenue', fmtMoney(K.total_revenue))}
+    ${kpiCard('Total Profit', fmtMoney(K.total_profit), 'gold')}
+    ${kpiCard('Regions Tracked', '30')}
+  </div>
+  <div class="grid g2">
+    <div class="panel"><h3>Best-Performing Regions (Target Achievement %)</h3><div class="chartwrap tall"><canvas id="c-reg-top"></canvas></div></div>
+    <div class="panel"><h3>Regions Nearest Target (lowest achievement)</h3><div class="chartwrap tall"><canvas id="c-reg-bottom"></canvas></div></div>
+  </div>
+</div>
+
+<!-- PAGE 6: PROFIT ANALYSIS -->
+<div class="page" id="page-profit">
+  <div class="pagehead">
+    <div><h1>Profit Analysis</h1><div class="desc">Where the company actually makes money</div></div>
+    <div class="slicers"><div class="slicer active">All Categories</div></div>
+  </div>
+  <div class="kpirow">
+    ${kpiCard('Total Profit', fmtMoney(K.total_profit))}
+    ${kpiCard('Profit Margin', fmtPct(K.profit_margin_pct), 'green')}
+    ${kpiCard('Total Revenue', fmtMoney(K.total_revenue), 'gold')}
+    ${kpiCard('Total Refunded', fmtMoney(K.total_refunded), 'red')}
+  </div>
+  <div class="grid g2" style="margin-bottom:14px;">
+    <div class="panel"><h3>Profit Margin Distribution (order-level)</h3><div class="chartwrap tall"><canvas id="c-profit-dist"></canvas></div></div>
+    <div class="panel"><h3>Revenue vs Profit by Category</h3><div class="chartwrap tall"><canvas id="c-profit-cat"></canvas></div></div>
+  </div>
+</div>
+
+<!-- PAGE 7: RETURNS DASHBOARD -->
+<div class="page" id="page-returns">
+  <div class="pagehead">
+    <div><h1>Returns Dashboard</h1><div class="desc">Quantifying and diagnosing the cost of returns</div></div>
+    <div class="slicers"><div class="slicer active">All Reasons</div></div>
+  </div>
+  <div class="kpirow">
+    ${kpiCard('Return Rate', fmtPct(K.return_rate_pct), 'red')}
+    ${kpiCard('Total Refunded', fmtMoney(K.total_refunded))}
+    ${kpiCard('Refund % of Revenue', fmtPct(K.refund_pct_of_revenue), 'red')}
+    ${kpiCard('Total Returns', fmtNum(6108))}
+  </div>
+  <div class="grid g2">
+    <div class="panel"><h3>Return Reason Breakdown</h3><div class="chartwrap tall"><canvas id="c-ret-reason"></canvas></div></div>
+    <div class="panel"><h3>Return Rate % by Category</h3><div class="chartwrap tall"><canvas id="c-ret-cat"></canvas></div></div>
+  </div>
+</div>
+
+<!-- PAGE 8: FORECAST DASHBOARD -->
+<div class="page" id="page-forecast">
+  <div class="pagehead">
+    <div><h1>Forecast Dashboard</h1><div class="desc">Forward-looking view for planning conversations</div></div>
+  </div>
+  <div class="kpirow">
+    ${kpiCard('Latest MoM Growth', fmtPct(K.mom_growth_pct_latest), 'green')}
+    ${kpiCard('YoY Growth (Jan-Jul)', fmtPct(K.yoy_growth_pct_jan_jul), 'green')}
+    ${kpiCard('Forecast Basis', 'Through ' + K.analysis_complete_through, 'gold')}
+  </div>
+  <div class="panel" style="margin-bottom:14px;"><h3>Revenue Forecast (next 3 months, illustrative)</h3><div class="chartwrap tall"><canvas id="c-forecast"></canvas></div>
+    <div class="note">Forecast uses a simple trend projection from the complete reporting window for this mockup. The live Power BI page uses the native Analytics Pane forecast with a confidence interval, plus a What-If growth-rate parameter (see Build Guide Section 11).</div></div>
+  <div class="panel"><h3>Scenario Table &mdash; Next Month Revenue at Different Growth Assumptions</h3><table id="t-forecast-scenarios"></table></div>
+</div>
+
+`;
+
+// ============================================================================
+// CHART RENDERING
+// ============================================================================
+function barChart(id, labels, values, color=COLORS.navy, horizontal=false, moneyAxis=true){
+  new Chart(document.getElementById(id), {
+    type:'bar',
+    data:{labels, datasets:[{data:values, backgroundColor:color, borderRadius:3, maxBarThickness:28}]},
+    options:{
+      indexAxis: horizontal ? 'y' : 'x',
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=> moneyAxis ? fmtMoney(ctx.raw,false) : ctx.raw}}},
+      scales:{
+        x:{ticks:{callback:(v)=> horizontal ? (moneyAxis?fmtMoney(v):v) : (moneyAxis?fmtMoney(v):v)}, grid:{display:!horizontal}},
+        y:{ticks:{callback:(v,i)=> horizontal ? labels[i] : (moneyAxis?fmtMoney(v):v)}, grid:{display:horizontal}}
+      }
+    }
+  });
+}
+
+function groupedBar(id, labels, series){ // series = [{label,data,color}]
+  new Chart(document.getElementById(id), {
+    type:'bar',
+    data:{labels, datasets: series.map(s=>({label:s.label, data:s.data, backgroundColor:s.color, borderRadius:3}))},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'}},
+      scales:{y:{ticks:{callback:(v)=>fmtMoney(v)}}}}
+  });
+}
+
+function lineChart(id, labels, values, color=COLORS.navy){
+  new Chart(document.getElementById(id), {
+    type:'line',
+    data:{labels, datasets:[{data:values, borderColor:color, backgroundColor:color+'22', fill:true, tension:0.35, pointRadius:0, borderWidth:2.5}]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{ticks:{callback:(v)=>fmtMoney(v)}}, x:{ticks:{maxRotation:45, minRotation:45, autoSkip:true, maxTicksLimit:12}}}}
+  });
+}
+
+function donutChart(id, labels, values){
+  new Chart(document.getElementById(id), {
+    type:'doughnut',
+    data:{labels, datasets:[{data:values, backgroundColor:PALETTE, borderWidth:2, borderColor:'#fff'}]},
+    options:{responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{legend:{position:'right', labels:{boxWidth:10, font:{size:10.5}}},
+        tooltip:{callbacks:{label:(ctx)=> ctx.label + ': ' + fmtMoney(ctx.raw)}}}}
+  });
+}
+
+function gaugeChart(id, pct){
+  const clamped = Math.min(pct, 150);
+  new Chart(document.getElementById(id), {
+    type:'doughnut',
+    data:{labels:['Achieved','Remaining'], datasets:[{data:[clamped, Math.max(150-clamped,0)], backgroundColor:[COLORS.green, '#E4E7EC'], borderWidth:0}]},
+    options:{responsive:true, maintainAspectRatio:false, cutout:'75%', rotation:-90, circumference:180,
+      plugins:{legend:{display:false}, tooltip:{enabled:false}}}
+  });
+}
+
+// Page 1: Executive Overview
+lineChart('c-exec-trend', DATA.monthly_revenue.labels, DATA.monthly_revenue.values);
+donutChart('c-exec-cat', DATA.category.labels, DATA.category.revenue);
+barChart('c-exec-region', DATA.country.labels.slice(0,5), DATA.country.values.slice(0,5), COLORS.navy, true);
+gaugeChart('c-exec-gauge', K.avg_target_achievement_pct);
+
+// Page 2: Sales Analysis
+donutChart('c-sales-channel', DATA.channel.labels, DATA.channel.values);
+barChart('c-sales-country', DATA.country.labels, DATA.country.values, COLORS.navyLight);
+(function(){
+  const tbl = document.getElementById('t-sales-reps');
+  const max = Math.max(...DATA.top_reps.values);
+  let html = '<tr><th>Rank</th><th>Sales Rep</th><th>Revenue</th><th></th></tr>';
+  DATA.top_reps.labels.forEach((name,i)=>{
+    const v = DATA.top_reps.values[i]; const pct = (v/max*100).toFixed(0);
+    html += `<tr><td>#${i+1}</td><td>${name}</td><td>${fmtMoney(v)}</td><td style="width:120px;"><div class="bar-cell" style="--pct:${pct}%; height:14px; border-radius:3px;"></div></td></tr>`;
+  });
+  tbl.innerHTML = html;
+})();
+
+// Page 3: Customer Analysis
+donutChart('c-cust-segment', DATA.segment.labels, DATA.segment.values);
+barChart('c-cust-top', DATA.top_customers.labels, DATA.top_customers.values, COLORS.gold, true);
+
+// Page 4: Product Analysis
+barChart('c-prod-top', DATA.top_products.labels, DATA.top_products.values, COLORS.navy, true);
+barChart('c-prod-bottom', DATA.bottom_products.labels, DATA.bottom_products.values, COLORS.red, true);
+groupedBar('c-prod-cat', DATA.category.labels, [
+  {label:'Revenue', data:DATA.category.revenue, color:COLORS.navy},
+  {label:'Profit', data:DATA.category.profit, color:COLORS.gold},
+]);
+
+// Page 5: Regional Analysis
+barChart('c-reg-top', DATA.target_top.labels, DATA.target_top.values, COLORS.green, true, false);
+barChart('c-reg-bottom', DATA.target_bottom.labels, DATA.target_bottom.values, COLORS.red, true, false);
+
+// Page 6: Profit Analysis
+barChart('c-profit-dist', DATA.margin_dist.labels, DATA.margin_dist.values, COLORS.navyLight, false, false);
+groupedBar('c-profit-cat', DATA.category.labels, [
+  {label:'Revenue', data:DATA.category.revenue, color:COLORS.navy},
+  {label:'Profit', data:DATA.category.profit, color:COLORS.gold},
+]);
+
+// Page 7: Returns Dashboard
+barChart('c-ret-reason', DATA.return_reason.labels, DATA.return_reason.values, COLORS.red, true, false);
+barChart('c-ret-cat', DATA.return_by_category.labels, DATA.return_by_category.values, COLORS.red, true, false);
+
+// Page 8: Forecast Dashboard
+(function(){
+  const hist = DATA.monthly_revenue;
+  const lastN = hist.values.slice(-6);
+  const avgGrowth = lastN.slice(1).map((v,i)=> (v-lastN[i])/lastN[i]).reduce((a,b)=>a+b,0) / (lastN.length-1);
+  const lastVal = hist.values[hist.values.length-1];
+  const forecastVals = []; let v = lastVal;
+  for(let i=0;i<3;i++){ v = v*(1+avgGrowth); forecastVals.push(Math.round(v)); }
+  const labels = [...hist.labels, 'F+1', 'F+2', 'F+3'];
+  const actual = [...hist.values, null, null, null];
+  const forecast = [...Array(hist.values.length-1).fill(null), lastVal, ...forecastVals];
+
+  new Chart(document.getElementById('c-forecast'), {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'Actual', data:actual, borderColor:COLORS.navy, backgroundColor:COLORS.navy+'22', fill:true, tension:0.3, pointRadius:0, borderWidth:2.5},
+      {label:'Forecast', data:forecast, borderColor:COLORS.gold, borderDash:[6,4], fill:false, tension:0.3, pointRadius:3, borderWidth:2.5},
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'}},
+      scales:{y:{ticks:{callback:(v)=>fmtMoney(v)}}, x:{ticks:{maxRotation:45, minRotation:45, autoSkip:true, maxTicksLimit:14}}}}
+  });
+
+  const tbl = document.getElementById('t-forecast-scenarios');
+  let html = '<tr><th>Growth Assumption</th><th>Forecasted Next-Month Revenue</th></tr>';
+  [0, 0.05, 0.10, 0.15].forEach(g=>{
+    html += `<tr><td>${(g*100).toFixed(0)}%</td><td>${fmtMoney(lastVal*(1+g))}</td></tr>`;
+  });
+  tbl.innerHTML = html;
+})();
+
+</script>
+</body>
+</html>

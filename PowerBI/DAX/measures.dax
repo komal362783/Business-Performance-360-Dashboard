@@ -1,0 +1,247 @@
+// ============================================================================
+// Business Performance 360 Dashboard - DAX Measures
+// GlobalMart Retail Inc.
+// ============================================================================
+// Data model: star schema
+//   fact_orders (101,800 rows) --- dim_customers, dim_products, dim_categories,
+//   dim_regions, dim_sales_reps, fact_returns, fact_target_achievement, dim_date
+//
+// Relationships (all Single direction, "many" side on fact_orders unless noted):
+//   fact_orders[customer_id]  -> dim_customers[customer_id]      (Many-to-1)
+//   fact_orders[product_id]   -> dim_products[product_id]        (Many-to-1)
+//   dim_products[category_id] -> dim_categories[category_id]     (Many-to-1)
+//   fact_orders[region_id]    -> dim_regions[region_id]          (Many-to-1)
+//   fact_orders[rep_id]       -> dim_sales_reps[rep_id]          (Many-to-1)
+//   fact_returns[order_id]    -> fact_orders[order_id]           (Many-to-1)
+//   fact_target_achievement[region_id] -> dim_regions[region_id] (Many-to-1)
+//   fact_orders[order_date]   -> dim_date[date]                  (Many-to-1)
+//
+// A dedicated dim_date table is recommended (Power BI: New Table, CALENDAR()
+// spanning MIN/MAX of fact_orders[order_date]) to support proper time
+// intelligence (SAMEPERIODLASTYEAR, DATESMTD, etc.) instead of relying on
+// fact_orders[order_date] directly as the date dimension.
+// ============================================================================
+
+
+// ============================================================================
+// SECTION 1: CORE REVENUE & PROFIT MEASURES
+// ============================================================================
+
+Total Revenue =
+SUM ( fact_orders[revenue] )
+
+Total Profit =
+SUM ( fact_orders[profit] )
+
+Profit Margin % =
+DIVIDE ( [Total Profit], [Total Revenue], 0 )
+
+Total Cost =
+SUMX ( fact_orders, fact_orders[quantity] * RELATED ( dim_products[unit_cost] ) )
+
+// ============================================================================
+// SECTION 2: ORDER & CUSTOMER VOLUME MEASURES
+// ============================================================================
+
+Total Orders =
+DISTINCTCOUNT ( fact_orders[order_id] )
+
+Average Order Value =
+DIVIDE ( [Total Revenue], [Total Orders], 0 )
+
+Total Customers =
+DISTINCTCOUNT ( dim_customers[customer_id] )
+
+Active Customers =
+DISTINCTCOUNT ( fact_orders[customer_id] )
+
+Customer Orders =
+CALCULATE ( [Total Orders], ALLEXCEPT ( fact_orders, fact_orders[customer_id] ) )
+
+Repeat Customer Rate % =
+VAR CustomerOrderCounts =
+    SUMMARIZE (
+        fact_orders,
+        fact_orders[customer_id],
+        "OrderCount", CALCULATE ( DISTINCTCOUNT ( fact_orders[order_id] ) )
+    )
+VAR RepeatCustomers =
+    COUNTROWS ( FILTER ( CustomerOrderCounts, [OrderCount] > 1 ) )
+VAR TotalActiveCustomers =
+    COUNTROWS ( CustomerOrderCounts )
+RETURN
+    DIVIDE ( RepeatCustomers, TotalActiveCustomers, 0 )
+
+// ============================================================================
+// SECTION 3: RETURNS MEASURES
+// ============================================================================
+
+Total Returns =
+DISTINCTCOUNT ( fact_returns[order_id] )
+
+Return Rate % =
+DIVIDE ( [Total Returns], [Total Orders], 0 )
+
+Total Refunded =
+SUM ( fact_returns[refund_amount] )
+
+Refund % of Revenue =
+DIVIDE ( [Total Refunded], [Total Revenue], 0 )
+
+// ============================================================================
+// SECTION 4: TIME INTELLIGENCE / GROWTH MEASURES
+// (Requires a proper dim_date table marked as the Date Table in Power BI)
+// ============================================================================
+
+Revenue LY =
+CALCULATE ( [Total Revenue], SAMEPERIODLASTYEAR ( dim_date[date] ) )
+
+YoY Revenue Growth % =
+DIVIDE ( [Total Revenue] - [Revenue LY], [Revenue LY], 0 )
+
+Revenue Prior Month =
+CALCULATE ( [Total Revenue], DATEADD ( dim_date[date], -1, MONTH ) )
+
+MoM Revenue Growth % =
+DIVIDE ( [Total Revenue] - [Revenue Prior Month], [Revenue Prior Month], 0 )
+
+Revenue MTD =
+TOTALMTD ( [Total Revenue], dim_date[date] )
+
+Revenue YTD =
+TOTALYTD ( [Total Revenue], dim_date[date] )
+
+Rolling 3-Month Revenue =
+CALCULATE (
+    [Total Revenue],
+    DATESINPERIOD ( dim_date[date], MAX ( dim_date[date] ), -3, MONTH )
+)
+
+// NOTE: this dataset's final ~5 months before the collection cutoff (Aug-Dec 2025)
+// are an incomplete reporting window (see Python phase documentation) -- in the
+// live model, apply a "Reporting Cutoff" parameter/filter so growth measures
+// compare complete periods only. Example pattern:
+//
+// Is Complete Period =
+// VAR CutoffDate = DATE ( 2025, 7, 31 )
+// RETURN IF ( MAX ( dim_date[date] ) <= CutoffDate, 1, 0 )
+
+// ============================================================================
+// SECTION 5: TARGET ACHIEVEMENT MEASURES
+// ============================================================================
+
+Target Revenue =
+SUM ( fact_target_achievement[target_revenue] )
+
+Actual Revenue (Target Table) =
+SUM ( fact_target_achievement[actual_revenue] )
+
+Target Achievement % =
+DIVIDE ( [Actual Revenue (Target Table)], [Target Revenue], 0 )
+
+Target Status =
+IF ( [Target Achievement %] >= 1, "On Target", "Below Target" )
+
+Regions Below Target =
+CALCULATE (
+    DISTINCTCOUNT ( fact_target_achievement[region_id] ),
+    FILTER ( fact_target_achievement, [Target Achievement %] < 1 )
+)
+
+// ============================================================================
+// SECTION 6: PRODUCT & CATEGORY MEASURES
+// ============================================================================
+
+Total Products Sold =
+DISTINCTCOUNT ( fact_orders[product_id] )
+
+Total Units Sold =
+SUM ( fact_orders[quantity] )
+
+Revenue Rank (Product) =
+RANKX ( ALL ( dim_products[product_name] ), [Total Revenue], , DESC )
+
+Category Profit Margin % =
+DIVIDE (
+    CALCULATE ( [Total Profit], ALLEXCEPT ( dim_categories, dim_categories[category_name] ) ),
+    CALCULATE ( [Total Revenue], ALLEXCEPT ( dim_categories, dim_categories[category_name] ) ),
+    0
+)
+
+// ============================================================================
+// SECTION 7: SALES REP MEASURES
+// ============================================================================
+
+Rep Revenue =
+[Total Revenue]
+
+Rep Revenue Rank =
+RANKX ( ALL ( dim_sales_reps[rep_name] ), [Total Revenue], , DESC )
+
+Average Rep Revenue =
+AVERAGEX ( VALUES ( dim_sales_reps[rep_name] ), [Total Revenue] )
+
+Reps Above Average =
+CALCULATE (
+    DISTINCTCOUNT ( dim_sales_reps[rep_id] ),
+    FILTER ( ALL ( dim_sales_reps[rep_name] ), [Total Revenue] > [Average Rep Revenue] )
+)
+
+// ============================================================================
+// SECTION 8: DELIVERY / OPERATIONS MEASURES
+// ============================================================================
+
+Average Delivery Days =
+AVERAGE ( fact_orders[delivery_days] )
+
+Slow Delivery Rate % =
+DIVIDE (
+    CALCULATE ( [Total Orders], fact_orders[delivery_days] > 5 ),
+    [Total Orders], 0
+)
+
+// ============================================================================
+// SECTION 9: DISCOUNT / MARGIN HEALTH MEASURES
+// ============================================================================
+
+Average Discount % =
+AVERAGE ( fact_orders[discount] )
+
+Low Margin Order Rate % =
+DIVIDE (
+    CALCULATE ( [Total Orders], fact_orders[profit_margin_pct] < 20 ),
+    [Total Orders], 0
+)
+
+// ============================================================================
+// SECTION 10: DYNAMIC TITLE MEASURES (used as Card/Text visual sources)
+// ============================================================================
+
+Dynamic Title - Executive Overview =
+"Executive Overview — " & FORMAT ( [Total Revenue], "$#,##0,,\"M\"" )
+    & " Revenue | " & FORMAT ( [Profit Margin %], "0.0%" ) & " Margin"
+
+Dynamic Title - Regional Selection =
+VAR SelectedRegion =
+    IF ( HASONEVALUE ( dim_regions[region_name] ), VALUES ( dim_regions[region_name] ), "All Regions" )
+RETURN
+    "Regional Performance: " & SelectedRegion
+
+Dynamic Title - Category Selection =
+VAR SelectedCategory =
+    IF ( HASONEVALUE ( dim_categories[category_name] ), VALUES ( dim_categories[category_name] ), "All Categories" )
+RETURN
+    SelectedCategory & " — " & FORMAT ( [Total Revenue], "$#,##0,,\"M\"" )
+
+// ============================================================================
+// SECTION 11: FORECAST SUPPORT MEASURES
+// (Feed Power BI's built-in Analytics Pane forecast, or a what-if parameter)
+// ============================================================================
+
+Forecast Growth Rate (What-If Parameter) =
+// Create via Modeling > New Parameter > What if parameter
+// Name: Forecast Growth Rate, values 0% to 20%, increment 1%, default 5%
+SELECTEDVALUE ( 'Forecast Growth Rate'[Forecast Growth Rate Value], 0.05 )
+
+Forecasted Next Month Revenue =
+[Total Revenue] * ( 1 + [Forecast Growth Rate (What-If Parameter)] )
